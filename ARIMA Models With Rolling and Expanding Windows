@@ -1,0 +1,291 @@
+ARIMA Models With Rolling and Expanding Windows 
+
+#Question 1
+rer <- read.csv("rernew.csv", header = F)
+rer.ts <- ts(rer, start = c(1870))
+rer.ts1 <- window(rer.ts, start=c(1870), end=c(2012))
+
+#A
+plot(rer.ts)
+tsdisplay(rer.ts1)
+
+
+#B
+adf.test(rer.ts1, alternative = "stationary")
+
+#C
+bp.rer <- breakpoints(rer.ts1 ~ 1)
+summary(bp.rer)
+plot(bp.rer)
+breakpoints(bp.rer)
+
+#D
+rer.fit <- auto.arima(rer.ts1,d=0, seasonal=FALSE)  
+summary(rer.fit)
+checkresiduals(rer.fit)
+
+#ARIMA(1,0,0) with non-zero mean 
+
+#E
+fit1 <- Arima(rer.ts1, order=c(1,0,0))
+checkresiduals(fit1)
+#Ljung-Box test p-value = 0.1745
+
+#F
+fac.rer <- breakfactor(bp.rer, breaks = 2, label = "seg")
+fm.rer <- lm(rer.ts1 ~ 1 + fac.rer)
+summary(fm.rer)
+plot(rer.ts)
+lines(as.vector(time(rer.ts1)), fitted(fm.rer), col = 4)
+rer.ts1$Year <- time(rer.ts1) 
+rer.ts1$Year
+dum1 <- ifelse(rer.ts1$Year>1945,1,0)
+dum1
+dum2 <- ifelse(rer.ts1$Year>1970,1,0)
+dum2
+rer.ts1 <- window(rer.ts, start=c(1870), end=c(2012))
+fit2 <- Arima(rer.ts1, order=c(1,0,0), xreg=cbind(dum1,dum2))
+summary(fit2)
+
+#G
+fore1<-forecast(fit1,h=1)
+plot(fore1)
+
+
+#Forecast ARMA with two breaks
+dum1<-c(1)
+dum2<-c(1)
+fore2<-forecast(fit2,xreg=cbind(dum1,dum2),h=1)
+plot(fore2)
+
+accuracy(fore1,rer.ts)
+accuracy(fore2,rer.ts)
+
+#H
+bp.rer2 <- breakpoints(rer.ts ~ 1)
+fac.rer2 <- breakfactor(bp.rer2, breaks = 2, label = "seg")
+fm.rer2 <- lm(rer.ts ~ 1 + fac.rer2)
+rer.ts$Year <- time(rer.ts) 
+rer.ts$Year
+dum1 <- ifelse(rer.ts$Year>1945,1,0)
+dum1
+dum2 <- ifelse(rer.ts$Year>1970,1,0)
+dum2
+rer.ts <- ts(data = rer$V2, start=c(1870), end=c(2013))
+fit3 <- Arima(rer.ts, order=c(1,0,0), xreg=cbind(dum1,dum2))
+dum1<-c(1,1,1,1)
+dum2<-c(1,1,1,1)
+fore3<-forecast(fit2,xreg=cbind(dum1,dum2),h=4)
+plot(fore3)
+
+#Question 2 
+#A
+unem <- read.csv("Unemployment_Rate.csv", header = F)
+unem.ts <- ts(unem$V2, start = c(1965,4), frequency = 4)
+unem.ts
+tsdisplay(unem.ts)
+#B
+adf.test(unem.ts, alternative = "stationary")
+#FTR null of non stationarity 
+#C
+ur.fit <- auto.arima(unem.ts, trace=T, seasonal=F)
+ur.fit1 <- Arima(unem.ts, order = c(2,0,0))
+checkresiduals(ur.fit1)
+#D
+ur.fit2 <- auto.arima(unem.ts, d=1, trace = T, seasonal=F)
+checkresiduals(ur.fit2)
+
+#E
+ur.fit3 <- Arima(unem.ts, order = c(2,0,0))
+checkresiduals(ur.fit3)
+
+-
+#-----------------------------------------1 Step Forecast-----------------------------------------------------
+
+t<-length(unem.ts)
+rolling.window<-60
+#lenghth of the test set
+test.horizon<-1
+#test gap
+test.gap<-0
+#number of train/test splits of the data
+n<-t-(rolling.window+test.horizon+test.gap)+1
+
+model.AIC<-auto.arima(unem.ts, ic = "aic", seasonal =FALSE)
+summary(model.AIC)
+model.BIC<-auto.arima(unem.ts, ic = "bic", seasonal =FALSE)
+summary(model.BIC)
+
+#RMSE matrix stores out of smaple RMSE for ARIMA(2,0,0) and ARIMA(1,0,0) 
+#using rolling and expanding cross-validation texchnique 
+
+RMSE<-matrix(0,n,4)
+p<-matrix(0,n,4)
+
+for(i in 1:n){
+  
+  #Start and end of train set
+  p[i,1]<-1966.00+(i-1)/4
+  p[i,2]<-p[i,1]+(rolling.window-1)/4
+  #Start and end of test set
+  p[i,3]<-p[i,2]+(test.gap+1)/4
+  p[i,4]<-p[i,3]+(test.horizon-1)/4
+  
+  #rolling window
+  train.set<-window(unem.ts,  p[i,1],   p[i,2])
+  test.set<-window(unem.ts,   p[i,3],   p[i,4])
+  
+  model.A<-Arima(train.set, order=c(2,0,0))
+  RMSE[i,1]<-accuracy(forecast(model.A, h=(test.horizon+1+test.gap)),test.set)[2,2]
+  
+  model.B<-Arima(train.set, order=c(1,1,0))
+  RMSE[i,2]<-accuracy(forecast(model.B, h=(test.horizon+1+test.gap)),test.set)[2,2]
+  
+  #expanding window
+  train.set<-window(unem.ts,  1966.00,   p[i,2])
+  test.set<-window(unem.ts,    p[i,3],   p[i,4])
+  
+  model.A<-Arima(train.set, order=c(2,0,0))
+  RMSE[i,3]<-accuracy(forecast(model.A, h=(test.horizon+1+test.gap)),test.set)[2,2]
+  
+  model.B<-Arima(train.set, order=c(1,1,0))
+  RMSE[i,4]<-accuracy(forecast(model.B, h=(test.horizon+1+test.gap)),test.set)[2,2]
+  
+}
+
+results<-matrix(0,2,2)
+rownames(results)<-c("Rolling sample", "Expanding sample")
+colnames(results)<-c("Model A", "Model B")
+
+results[1,1]<-mean(RMSE[,1])
+results[1,2]<-mean(RMSE[,2])
+results[2,1]<-mean(RMSE[,3])
+results[2,2]<-mean(RMSE[,4])
+
+results
+#--------------------------------------------------------------4 Step Forecast-------------------------------------------
+t<-length(unem.ts)
+rolling.window<-60
+#lenghth of the test set
+test.horizon<-4
+#test gap
+test.gap<-0
+#number of train/test splits of the data
+n<-t-(rolling.window+test.horizon+test.gap)+1
+
+model.AIC<-auto.arima(unem.ts, ic = "aic", seasonal =FALSE)
+summary(model.AIC)
+model.BIC<-auto.arima(unem.ts, ic = "bic", seasonal =FALSE)
+summary(model.BIC)
+
+#RMSE matrix stores out of smaple RMSE for ARIMA(2,0,0) and ARIMA(1,0,0) 
+#using rolling and expanding cross-validation texchnique 
+
+RMSE<-matrix(0,n,4)
+p<-matrix(0,n,4)
+
+for(i in 1:n){
+  
+  #Start and end of train set
+  p[i,1]<-1965.75+(i-1)/4
+  p[i,2]<-p[i,1]+(rolling.window-1)/4
+  #Start and end of test set
+  p[i,3]<-p[i,2]+(test.gap+1)/4
+  p[i,4]<-p[i,3]+(test.horizon-1)/4
+  
+  #rolling window
+  train.set<-window(unem.ts,  p[i,1],   p[i,2])
+  test.set<-window(unem.ts,   p[i,3],   p[i,4])
+  
+  model.A<-Arima(train.set, order=c(2,0,0))
+  RMSE[i,1]<-accuracy(forecast(model.A, h=(test.horizon+1+test.gap)),test.set)[2,2]
+  
+  model.B<-Arima(train.set, order=c(1,1,0))
+  RMSE[i,2]<-accuracy(forecast(model.B, h=(test.horizon+1+test.gap)),test.set)[2,2]
+  
+  #expanding window
+  train.set<-window(unem.ts,  1965.75,   p[i,2])
+  test.set<-window(unem.ts,    p[i,3],   p[i,4])
+  
+  model.A<-Arima(train.set, order=c(2,0,0))
+  RMSE[i,3]<-accuracy(forecast(model.A, h=(test.horizon+1+test.gap)),test.set)[2,2]
+  
+  model.B<-Arima(train.set, order=c(1,1,0))
+  RMSE[i,4]<-accuracy(forecast(model.B, h=(test.horizon+1+test.gap)),test.set)[2,2]
+  
+}
+
+results<-matrix(0,2,2)
+rownames(results)<-c("Rolling sample", "Expanding sample")
+colnames(results)<-c("Model A", "Model B")
+
+results[1,1]<-mean(RMSE[,1])
+results[1,2]<-mean(RMSE[,2])
+results[2,1]<-mean(RMSE[,3])
+results[2,2]<-mean(RMSE[,4])
+
+results
+
+#------------------------------------------------------------- 4th Step Forecast_________________________________________
+
+t<-length(unem.ts)
+rolling.window<-60
+#lenghth of the test set
+test.horizon<-1
+#test gap
+test.gap<-3
+#number of train/test splits of the data
+n<-t-(rolling.window+test.horizon+test.gap)+1
+
+model.AIC<-auto.arima(unem.ts, ic = "aic", seasonal =FALSE)
+summary(model.AIC)
+model.BIC<-auto.arima(unem.ts, ic = "bic", seasonal =FALSE)
+summary(model.BIC)
+
+#RMSE matrix stores out of smaple RMSE for ARIMA(2,0,0) and ARIMA(1,0,0) 
+#using rolling and expanding cross-validation texchnique 
+
+RMSE<-matrix(0,n,4)
+p<-matrix(0,n,4)
+
+for(i in 1:n){
+  
+  #Start and end of train set
+  p[i,1]<-1966.00+(i-1)/4
+  p[i,2]<-p[i,1]+(rolling.window-1)/4
+  #Start and end of test set
+  p[i,3]<-p[i,2]+(test.gap+1)/4
+  p[i,4]<-p[i,3]+(test.horizon-1)/4
+  
+  #rolling window
+  train.set<-window(unem.ts,  p[i,1],   p[i,2])
+  test.set<-window(unem.ts,   p[i,3],   p[i,4])
+  
+  model.A<-Arima(train.set, order=c(2,0,0))
+  RMSE[i,1]<-accuracy(forecast(model.A, h=(test.horizon+1+test.gap)),test.set)[2,2]
+  
+  model.B<-Arima(train.set, order=c(1,1,0))
+  RMSE[i,2]<-accuracy(forecast(model.B, h=(test.horizon+1+test.gap)),test.set)[2,2]
+  
+  #expanding window
+  train.set<-window(unem.ts,  1966.00,   p[i,2])
+  test.set<-window(unem.ts,    p[i,3],   p[i,4])
+  
+  model.A<-Arima(train.set, order=c(2,0,0))
+  RMSE[i,3]<-accuracy(forecast(model.A, h=(test.horizon+1+test.gap)),test.set)[2,2]
+  
+  model.B<-Arima(train.set, order=c(1,1,0))
+  RMSE[i,4]<-accuracy(forecast(model.B, h=(test.horizon+1+test.gap)),test.set)[2,2]
+  
+}
+
+results<-matrix(0,2,2)
+rownames(results)<-c("Rolling sample", "Expanding sample")
+colnames(results)<-c("Model A", "Model B")
+
+results[1,1]<-mean(RMSE[,1])
+results[1,2]<-mean(RMSE[,2])
+results[2,1]<-mean(RMSE[,3])
+results[2,2]<-mean(RMSE[,4])
+
+results
