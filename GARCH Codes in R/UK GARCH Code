@@ -1,0 +1,467 @@
+UK GARCH Code 
+
+startdate = as.Date("2014-01-01")
+enddate = as.Date("2020-06-15")
+
+SAP <- na.omit(getSymbols("^GSPC", src="yahoo", env=NULL, from = startdate, to = enddate))
+SAP_ret <- dailyReturn(SAP)
+SAP_ret_post <- window(SAP_ret, start = "2015-01-01" )
+SAP_ret_pre <- window(SAP_ret, end = "2019-06-14")
+
+SAP_train_post <- window(SAP_ret_post, end = '2019-12-31')
+SAP_train_pre <- window(SAP_ret, end = '2018-12-31')
+SAP_test_pre <- window(SAP_ret, start = '2019-01-01', end = '2019-02-01')
+length(SAP_test_pre)
+SAP_test_post <- window(SAP_ret, start = '2020-01-01', end = '2020-02-03')
+length(SAP_test_post)
+#---------------------------------------------Pre-COVID Data Tests -------------------------------
+
+autoplot(SAP_train_pre, main = "Pre COVID Daily Returns")
+tsdisplay(SAP_train_pre)
+
+auto.arima(SAP_train_pre, trace = T, approximation = F, stepwise = F)
+
+SAP_fit2 <- Arima(SAP_train_pre, order = c(1,0,1))
+summary(SAP_fit2)
+autoplot(residuals(SAP_fit2), main = 'ARMA(1,1) Residuals')
+
+Box.test(residuals(SAP_fit2), lag=10,  type="Ljung")
+Box.test(residuals(SAP_fit2), lag=15,  type="Ljung")
+Box.test(residuals(SAP_fit2), lag=20,  type="Ljung")
+Box.test(residuals(SAP_fit2), lag=25,  type="Ljung")
+Acf(residuals(SAP_fit2))
+checkresiduals(SAP_fit2)
+Acf((residuals(SAP_fit2)^2))
+
+ArchTest((SAP_fit2$residuals)^2)
+
+SAP_fore2 <- forecast(SAP_fit2, h = 22 )
+plot(SAP_fore2)
+
+
+plot(SAP_train_post2)
+
+plot(SAP_test_pre)
+plot(SAP_test_post)
+#--------------------------------------- Post COVID DATA Tests -------------------------------------------
+autoplot(SAP_train_post, main = "Post COVID Daily Returns")
+tsdisplay(SAP_train_post)
+auto.arima(SAP_train_post, trace = T, approximation = F, stepwise = F)
+
+SAP_fit <- Arima(SAP_train_post, order = c(1,0,1))
+summary(SAP_fit)
+autoplot(SAP_fit$residuals)
+
+Box.test(residuals(SAP_fit), lag=10,  type="Ljung")
+Box.test(residuals(SAP_fit), lag=15,  type="Ljung")
+Box.test(residuals(SAP_fit), lag=20,  type="Ljung")
+Box.test(residuals(SAP_fit), lag=25,  type="Ljung")
+
+Acf(residuals(SAP_fit))
+Acf((residuals(SAP_fit)^2))
+
+ArchTest((SAP_fit$residuals)^2)
+
+SAP_fore <- forecast(SAP_fit, h = 22)
+plot(SAP_fore)
+
+# ----------------------------------------- sGARCH Pre COVID -----------------------------------------
+
+spec2 <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1,1)),
+                    mean.model = list(armaOrder = c(1,1)), distribution.model = 'sstd')
+
+gfit2 <- ugarchfit(spec = spec2, SAP_ret_pre, out.sample = 114)
+gfit2cof <- as.data.frame(gfit2@fit$matcoef)
+
+coef(gfit2)
+plot(gfit2)
+1
+2
+3
+8
+9
+10
+11
+12
+0
+
+#----------------------------------------Standard N Ahead Forecast---------------------------------
+
+mfore2 <- ugarchforecast(gfit2, n.ahead = 22)
+plot(mfore2)
+1
+3
+0
+show(mfore2)
+
+Tail_pre_real <- tail((SAP_train_pre - mean(SAP_train_pre))^2, 50)
+A2 <- c(as.data.frame(Tail_pre_real)[,1], rep(NA,22))
+B2 <- c(tail(gfit2@fit$var, 50), rep(NA,22))
+C2 <- c(rep(NA,50), (mfore2@forecast$sigmaFor)^2)
+D2 <- rep(uncvariance(gfit2), 72)
+plot(A2, type = 'l', xlab = 'Observation', ylab = 'Variance')
+lines(B2, col = 'green')
+lines(C2, col = 'red')
+lines(D2, col = 'blue')
+
+#---------------------------------------- 1 Step rolling forecasts -------------------------------
+
+fore2 <- ugarchroll(spec2, data = SAP_ret_pre, n.ahead = 1, forecast.length = 114,
+                    refit.window = "moving", window.size = 1258, refit.every = 10, 
+                    calculate.VaR = T )
+
+perf2 <- as.data.frame(fpm(fore2))
+perf2
+rperf2 <- sqrt(perf2[1,])
+rperf2
+
+
+show(fore2)
+plot(fore2)
+1
+2
+3
+4
+0
+
+
+# ----------------------------------------- sGARCH POST COVID -----------------------------------------
+
+spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1,1)),
+                   mean.model = list(armaOrder = c(1,1)), distribution.model = 'sstd')
+
+gfit <- ugarchfit(spec = spec, SAP_ret_post, out.sample = 113)
+show(gfit)
+gfitcof <- as.data.frame(gfit@fit$matcoef)
+plot(gfit)
+1
+2
+3
+8
+9
+10
+11
+12
+0
+
+#------------------------------------------Standard N step ahead forecast --------------------------
+
+mfore <- ugarchforecast(gfit, n.ahead = 22)
+plot(mfore)
+1
+3
+0
+show(mfore)
+
+
+
+Tail_post_real <- tail((SAP_train_post - mean(SAP_train_post))^2, 50)
+A <- c(as.data.frame(Tail_post_real)[,1], rep(NA,22))
+B <- c(tail(gfit@fit$var, 50), rep(NA,22))
+C <- c(rep(NA,50), (mfore@forecast$sigmaFor)^2)
+D <- rep(uncvariance(gfit), 72)
+uncvariance(gfit)
+plot(A, type = 'l')
+lines(B, col = 'green')
+lines(C, col = 'red')
+lines(D, col = 'blue')
+#---------------------------------------- 1 Step rolling forecasts -------------------------------
+
+fore <- ugarchroll(spec, data = SAP_ret_post, n.ahead = 1, forecast.length = 113,
+                   refit.window = "moving", window.size = 1258, refit.every = 10, calculate.VaR = T )
+
+perf <- as.data.frame(fpm(fore))
+perf
+rperf <- sqrt(perf[1,])
+rperf
+
+show(fore)
+plot(fore)
+1
+2
+3
+4
+0
+
+
+#------------------------------------------ eGARCH Pre COVID---------------------------------------------
+
+spec4 <- ugarchspec(variance.model = list(model = "eGARCH", garchOrder = c(1,1)),
+                    mean.model = list(armaOrder = c(1,1)), distribution.model = 'sstd')
+
+gfit4 <- ugarchfit(spec = spec4, SAP_ret_pre, out.sample = 114)
+show(gfit4)
+gfitcof4 <- as.data.frame(gfit4@fit$matcoef)
+plot(gfit4)
+1
+2
+3
+8
+9
+10
+11
+12
+0
+
+
+#------------------------------------------Standard N step ahead forecast --------------------------
+
+mfore4 <- ugarchforecast(gfit4, n.ahead = 22)
+plot(mfore4)
+1
+3
+0
+show(mfore4)
+
+Tail_pre_real <- tail((SAP_train_pre - mean(SAP_train_pre))^2, 50)
+A4 <- c(as.data.frame(Tail_pre_real)[,1], rep(NA,22))
+B4 <- c(tail(gfit4@fit$var, 50), rep(NA,22))
+C4 <- c(rep(NA,50), (mfore4@forecast$sigmaFor)^2)
+D4 <- rep(uncvariance(gfit4), 72)
+
+plot(A4, type = 'l')
+lines(B4, col = 'green')
+lines(C4, col = 'red')
+lines(D4, col = 'blue')
+#---------------------------------------- 1 Step rolling forecasts -------------------------------
+
+
+fore4 <- ugarchroll(spec4, data = SAP_ret_pre, n.ahead = 1, forecast.length = 114,
+                    refit.window = "moving", window.size = 1258, refit.every = 10, calculate.VaR = T )
+
+
+perf4 <- as.data.frame(fpm(fore4))
+rperf4 <- sqrt(perf4[1,])
+rperf4
+
+show(fore4)
+plot(fore4)
+1
+2
+3
+4
+0
+
+
+#----------------------------------------- eGARCH Post COVID----------------------------------------------
+
+spec3 <- ugarchspec(variance.model = list(model = "eGARCH", garchOrder = c(1,1)),
+                    mean.model = list(armaOrder = c(1,1)), distribution.model = 'sstd')
+
+gfit3 <- ugarchfit(spec = spec3, SAP_ret_post, out.sample = 113)
+show(gfit3)
+gfitcof3 <- as.data.frame(gfit3@fit$matcoef)
+plot(gfit3)
+1
+2
+3
+8
+9
+10
+11
+12
+0
+
+
+#------------------------------------------Standard N step ahead forecast --------------------------
+
+mfore3 <- ugarchforecast(gfit3, n.ahead = 22)
+plot(mfore3)
+1
+3
+0
+show(mfore3)
+
+Tail_post_real <- tail((SAP_train_post - mean(SAP_train_post))^2, 50)
+A3 <- c(as.data.frame(Tail_post_real)[,1], rep(NA,22))
+B3 <- c(tail(gfit3@fit$var, 50), rep(NA,22))
+C3 <- c(rep(NA,50), (mfore3@forecast$sigmaFor)^2)
+D3 <- rep(uncvariance(gfit3), 72)
+plot(A3, type = 'l')
+lines(B3, col = 'green')
+lines(C3, col = 'red')
+lines(D3, col = 'blue')
+
+
+#---------------------------------------- 1 Step rolling forecasts -------------------------------
+
+
+fore3 <- ugarchroll(spec3, data = SAP_ret_post, n.ahead = 1, forecast.length = 113,
+                    refit.window = "moving", window.size = 1258, refit.every = 10, calculate.VaR = T)
+
+
+perf3 <- as.data.frame(fpm(fore3))
+rperf3 <- sqrt(perf3[1,])
+rperf3
+
+fpm(fore3)
+
+show(fore3)
+plot(fore3)
+1
+2
+3
+4
+0
+
+
+#------------------------------------------ gjrGARCH Pre COVID---------------------------------------------
+
+
+spec5 <- ugarchspec(variance.model = list(model = "gjrGARCH", garchOrder = c(1,1)),
+                    mean.model = list(armaOrder = c(1,1)), distribution.model = 'sstd')
+
+gfit5 <- ugarchfit(spec = spec5, SAP_ret_pre, out.sample = 114)
+
+show(gfit5)
+gfitcof5 <- as.data.frame(gfit5@fit$matcoef)
+plot(gfit5)
+1
+2
+3
+8
+9
+10
+11
+12
+0
+
+
+#------------------------------------------Standard N step ahead forecast --------------------------
+
+
+mfore5 <- ugarchforecast(gfit5, n.ahead = 22)
+plot(mfore5)
+1
+3
+0
+show(mfore5)
+
+Tail_pre_real <- tail((SAP_train_pre - mean(SAP_train_pre))^2, 50)
+A5 <- c(as.data.frame(Tail_pre_real)[,1], rep(NA,22))
+B5 <- c(tail(gfit5@fit$var, 50), rep(NA,22))
+C5 <- c(rep(NA,50), (mfore5@forecast$sigmaFor)^2)
+D5 <- rep(uncvariance(gfit5), 72)
+
+plot(A5, type = 'l')
+lines(B5, col = 'green')
+lines(C5, col = 'red')
+lines(D5, col = 'blue')
+
+
+#---------------------------------------- 1 Step rolling forecasts -------------------------------
+
+fore5 <- ugarchroll(spec5, data = SAP_ret_pre, n.ahead = 1, forecast.length = 114,
+                    refit.window = "moving", window.size = 1258, refit.every = 10, calculate.VaR = T )
+
+
+perf5 <- as.data.frame(fpm(fore5))
+rperf5 <- sqrt(perf5[1,])
+rperf5
+
+show(fore5)
+plot(fore5)
+1
+2
+3
+4
+0
+
+#----------------------------------------- gjrGARCH Post COVID----------------------------------------------
+
+spec6 <- ugarchspec(variance.model = list(model = "gjrGARCH", garchOrder = c(1,1)),
+                    mean.model = list(armaOrder = c(1,1)), distribution.model = 'sstd')
+
+gfit6 <- ugarchfit(spec = spec6, SAP_ret_post, out.sample = 113)
+show(gfit6)
+gfitcof6 <- as.data.frame(gfit6@fit$matcoef)
+plot(gfit6)
+1
+2
+3
+8
+9
+10
+11
+12
+0
+
+
+#------------------------------------------Standard N step ahead forecast --------------------------
+
+
+mfore6 <- ugarchforecast(gfit6, n.ahead = 22)
+plot(mfore6)
+1
+3
+0
+show(mfore6)
+
+Tail_post_real <- tail((SAP_train_post - mean(SAP_train_post))^2, 50)
+A6 <- c(as.data.frame(Tail_post_real)[,1], rep(NA,22))
+B6 <- c(tail(gfit6@fit$var, 50), rep(NA,22))
+C6 <- c(rep(NA,50), (mfore6@forecast$sigmaFor)^2)
+D6 <- rep(uncvariance(gfit6), 72)
+plot(A6, type = 'l')
+lines(B6, col = 'green')
+lines(C6, col = 'red')
+lines(D6, col = 'blue')
+
+#---------------------------------------- 1 Step rolling forecasts -------------------------------
+
+
+fore6 <- ugarchroll(spec6, data = SAP_ret_post, n.ahead = 1, forecast.length = 113,
+                    refit.window = "moving", window.size = 1258, refit.every = 10, calculate.VaR = T)
+
+
+perf6 <- as.data.frame(fpm(fore6))
+rperf6 <- sqrt(perf6[1,])
+rperf6
+
+show(fore6)
+plot(fore6)
+
+1
+2
+3
+4
+0
+
+
+#-------------------------------------------- Compiled Results -------------------------------------------------
+
+
+
+
+ResultTable <- c(rperf2, rperf4, rperf5,
+                 rperf, rperf3, rperf6)
+
+CoefTable <- cbind(gfit2cof,gfitcof)
+CoefTable <-rownames_to_column(CoefTable, var = "Var")
+CoefTable2 <- cbind(gfitcof4,gfitcof3,gfitcof5,gfitcof6)
+CoefTable2 <-rownames_to_column(CoefTable2, var = "Var")
+
+a <- infocriteria(gfit)
+b <- infocriteria(gfit2)
+c <- infocriteria(gfit3)
+d <- infocriteria(gfit4)
+e <- infocriteria(gfit5)
+g <- infocriteria(gfit6)
+ModelFit <- data.frame(cbind(b,d,e,a,c,g))
+a <- likelihood(gfit)
+b <- likelihood(gfit2)
+c <- likelihood(gfit3)
+d <- likelihood(gfit4)
+e <- likelihood(gfit5)
+g <- likelihood(gfit6)
+LogLike <- c(b,d,e,a,c,g)
+
+ModelFit <- rbind(ModelFit,LogLike,ResultTable)
+
+rownames(ModelFit) <- c("Akaike","Bayes","Shibata","Hannan-Quinn","Log Likelihood", "RMSE Var")
+
+ModelFit <-rownames_to_column(ModelFit, var = "Crit")
+
+colnames(ModelFit) <- c("Crit.","sGARCH Pre" , "eGARCH Pre" ,"gjrGARCH Pre" ,
+                        "sGARCH Post" , "eGARCH Post" , 
+                        "gjrGARCH Post")

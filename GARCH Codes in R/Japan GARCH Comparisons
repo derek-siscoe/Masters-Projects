@@ -1,0 +1,295 @@
+Japan GARCH Comparisons
+
+startdate = as.Date("2014-01-01")
+enddate = as.Date("2020-06-15")
+
+JAP <- na.omit(getSymbols("^N225", src="yahoo", env=NULL, from = startdate, to = enddate))
+JAP_ret <- dailyReturn(JAP)
+JAP_ret_post <- window(JAP_ret, start = "2015-01-01" )
+JAP_ret_pre <- window(JAP_ret, end = "2019-06-14")
+
+JAP_train_post <- window(JAP_ret_post, end = '2019-12-31')
+JAP_train_pre <- window(JAP_ret, end = '2018-12-31')
+plot(JAP_ret, lwd = 1)
+
+#---------------------------------------------Pre-COVID Data Tests -------------------------------
+
+tsdisplay(JAP_train_pre)
+auto.arima(JAP_train_pre, trace = T, approximation = F, stepwise = F, seasonal = F)
+
+JAP_fit2 <- Arima(JAP_train_pre, order = c(1,0,0))
+summary(JAP_fit2)
+rssq2 <- (JAP_fit2$residuals^2)
+
+Acf(rssq2)
+Pacf(rssq2)
+
+ArchTest(rssq2)
+
+
+JAP_fore2 <- forecast(JAP_fit2, h = 22)
+plot(JAP_fore2)
+
+#--------------------------------------- Post COVID DATA Tests -------------------------------------------
+
+tsdisplay(JAP_train_post)
+auto.arima(JAP_train_post,trace = T, approximation = F, stepwise = F, seasonal = F)
+
+JAP_fit <- Arima(JAP_train_post, order = c(0,0,1))
+summary(JAP_fit)
+
+rssq <- (JAP_fit$residuals^2)
+
+Acf(rssq)
+Pacf(rssq)
+
+ArchTest(rssq)
+
+JAP_fore <- forecast(JAP_fit, h = 22)
+plot(JAP_fore)
+
+
+# ----------------------------------------- sGARCH Pre COVID -----------------------------------------
+
+
+spec2 <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1,1)),
+                    mean.model = list(armaOrder = c(1,0)), distribution.model = 'sstd')
+
+gfit2 <- ugarchfit(spec = spec2, JAP_ret_pre, out.sample = 107)
+show(gfit2)
+
+plot(gfit2)
+1
+2
+3
+9
+12
+0
+
+
+fore2 <- ugarchroll(spec2, data = JAP_ret_pre, n.ahead = 1, forecast.length = 107,
+                    refit.window = "moving", window.size = 1227, refit.every = 10, calculate.VaR = T )
+
+
+perf2 <- as.data.frame(fpm(fore2))
+rperf2 <- sqrt(perf2[1,])
+rperf2
+
+show(fore2)
+plot(fore2)
+1
+2
+3
+4
+0
+
+# ----------------------------------------- sGARCH POST COVID -----------------------------------------
+
+spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1,1)),
+                   mean.model = list(armaOrder = c(0,1)), distribution.model = 'sstd')
+
+gfit <- ugarchfit(spec = spec, JAP_ret_post, out.sample = 108)
+show(gfit)
+
+plot(gfit)
+1
+2
+3
+8
+9
+12
+0
+
+fore <- ugarchroll(spec, data = JAP_ret_post, n.ahead = 1, forecast.length = 108,
+                   refit.window = "moving", window.size = 1224, refit.every = 10, calculate.VaR = T )
+
+perf <- as.data.frame(fpm(fore))
+rperf <- sqrt(perf[1,])
+rperf
+
+show(fore)
+plot(fore)
+1
+2
+3
+4
+0
+
+
+
+#------------------------------------------ eGARCH Pre COVID---------------------------------------------
+
+spec4 <- ugarchspec(variance.model = list(model = "eGARCH", garchOrder = c(1,1)),
+                    mean.model = list(armaOrder = c(1,0)), distribution.model = 'sstd')
+
+gfit4 <- ugarchfit(spec = spec4, JAP_ret_pre, out.sample = 107)
+show(gfit4)
+
+plot(gfit4)
+1
+2
+3
+8
+9
+12
+0
+
+fore4 <- ugarchroll(spec4, data = JAP_ret_pre, n.ahead = 1, forecast.length = 107,
+                    refit.window = "moving", window.size = 1227, refit.every = 10, calculate.VaR = T )
+
+perf4 <- as.data.frame(fpm(fore4))
+rperf4 <- sqrt(perf4[1,])
+rperf4
+
+show(fore4)
+plot(fore4)
+1
+2
+3
+4
+0
+
+#----------------------------------------- eGARCH Post COVID----------------------------------------------
+
+spec3 <- ugarchspec(variance.model = list(model = "eGARCH", garchOrder = c(1,1)),
+                    mean.model = list(armaOrder = c(0,1)), distribution.model = 'sstd')
+
+gfit3 <- ugarchfit(spec = spec3, JAP_ret_post, out.sample = 108)
+show(gfit3)
+
+plot(gfit3)
+1
+2
+3
+8
+9
+12
+0
+
+fore3 <- ugarchroll(spec3, data = JAP_ret_post, n.ahead = 1, forecast.length = 108,
+                    refit.window = "moving", window.size = 1224, refit.every = 10, calculate.VaR = T )
+
+perf3 <- as.data.frame(fpm(fore3))
+rperf3 <- sqrt(perf3[1,])
+rperf3
+
+show(fore3)
+plot(fore3)
+1
+2
+3
+4
+0
+
+#------------------------------------------ gjrGARCH Pre COVID---------------------------------------------
+
+spec5 <- ugarchspec(variance.model = list(model = "gjrGARCH", garchOrder = c(1,1)),
+                    mean.model = list(armaOrder = c(1,0)), distribution.model = 'sstd')
+
+gfit5 <- ugarchfit(spec = spec5, JAP_ret_pre, out.sample = 107)
+show(gfit5)
+
+plot(gfit5)
+1
+2
+3
+8
+9
+12
+0
+
+fore5 <- ugarchroll(spec5, data = JAP_ret_pre, n.ahead = 1, forecast.length = 107,
+                    refit.window = "moving", window.size = 1227, refit.every = 10, calculate.VaR = T )
+
+
+perf5 <- as.data.frame(fpm(fore5))
+rperf5 <- sqrt(perf5[1,])
+rperf5
+
+
+show(fore5)
+plot(fore5)
+1
+2
+3
+4
+0
+
+#----------------------------------------- gjrGARCH Post COVID----------------------------------------------
+
+spec6 <- ugarchspec(variance.model = list(model = "gjrGARCH", garchOrder = c(1,1)),
+                    mean.model = list(armaOrder = c(0,1)), distribution.model = 'sstd')
+
+gfit6 <- ugarchfit(spec = spec6, JAP_ret_post, out.sample = 108)
+show(gfit6)
+
+plot(gfit6)
+1
+2
+3
+8
+9
+12
+0
+
+fore6 <- ugarchroll(spec6, data = JAP_ret_post, n.ahead = 1, forecast.length = 108,
+                    refit.window = "moving", window.size = 1224, refit.every = 10, calculate.VaR = T )
+
+
+perf6 <- as.data.frame(fpm(fore6))
+rperf6 <- sqrt(perf6[1,])
+rperf6
+
+
+show(fore6)
+
+plot(fore6)
+
+1
+2
+3
+4
+0
+
+
+gfitcof <- as.data.frame(gfit@fit$matcoef)
+gfitcof2 <- as.data.frame(gfit2@fit$matcoef)
+gfitcof3 <- as.data.frame(gfit3@fit$matcoef)
+gfitcof4 <- as.data.frame(gfit4@fit$matcoef)
+gfitcof5 <- as.data.frame(gfit5@fit$matcoef)
+gfitcof6 <- as.data.frame(gfit6@fit$matcoef)
+CoefTable <- cbind(gfitcof2,gfitcof)
+CoefTable <-rownames_to_column(CoefTable, var = "Var")
+CoefTable2 <- cbind(gfitcof4,gfitcof3,gfitcof5,gfitcof6)
+CoefTable2 <-rownames_to_column(CoefTable2, var = "Var")
+write_xlsx(CoefTable, "JAPCoefTable.xlsx")
+write_xlsx(CoefTable2, "JAPCoefTable2.xlsx")
+
+ResultTable <- c(rperf2, rperf4, rperf5,
+                  rperf, rperf3, rperf6)
+
+
+a <- infocriteria(gfit)
+b <- infocriteria(gfit2)
+c <- infocriteria(gfit3)
+d <- infocriteria(gfit4)
+e <- infocriteria(gfit5)
+g <- infocriteria(gfit6)
+ModelFit <- data.frame(cbind(b,d,e,a,c,g))
+a <- likelihood(gfit)
+b <- likelihood(gfit2)
+c <- likelihood(gfit3)
+d <- likelihood(gfit4)
+e <- likelihood(gfit5)
+g <- likelihood(gfit6)
+LogLike <- c(b,d,e,a,c,g)
+
+ModelFit <- rbind(ModelFit,LogLike,ResultTable)
+
+rownames(ModelFit) <- c("Akaike","Bayes","Shibata","Hannan-Quinn","Log Likelihood", "RMSE Var")
+
+ModelFit <-rownames_to_column(ModelFit, var = "Crit")
+
+colnames(ModelFit) <- c("Crit.","sGARCH Pre" , "eGARCH Pre" ,"gjrGARCH Pre" ,
+                        "sGARCH Post" , "eGARCH Post" , 
+                        "gjrGARCH Post")
