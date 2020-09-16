@@ -1,0 +1,244 @@
+ARIMA Markdown file 
+
+---
+title: "Homework 4 2019"
+author: Derek Siscoe 
+output: word_document
+---
+
+```{r include = FALSE}
+library(tidyselect)
+library(TTR)
+library(rmarkdown)
+library(rvest)
+library(seasonal)
+library(stringi)
+library(stringr)
+library(tibble)
+library(dplyr)
+library(knitr)
+library(markdown)
+library(plyr)
+library(forcats)
+library(fpp)
+library(fpp2)
+library(expsmooth)
+library(openxlsx)
+library(readxl)
+library(writexl)
+library(tsbox)
+library(tidyverse)
+library(kableExtra)
+library(qwraps2)
+library(ggplot2)
+library(htmltools)
+library(magick)
+library(shiny)
+library(webshot)
+library(urca)
+library(gridExtra)
+library(grid)
+library(lattice)
+library(strucchange)
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, results = "asis")
+
+setwd("C:\\Users\\dsisc\\OneDrive\\Documents\\Econ Masters\\Spring 2020\\Forecasting\\Homework 4")
+
+
+
+
+```
+
+
+### Q1:  
+
+
+**Part A:** 
+
+```{r}
+rer <- read.csv("rernew.csv", header = F)
+rer.ts <- ts(rer$V2, start = c(1870))
+rer.ts1 <- window(rer.ts, start=c(1870), end=c(2012))
+
+plot(rer.ts)
+tsdisplay(rer.ts1)
+```
+
+**Part B:** 
+
+```{r, include = F}
+
+adf.test(rer.ts1, alternative = "stationary")
+
+```
+ADF test p-value = 0.01119 so we can reject the null hypothesis and the data is stationary.
+
+**Part C:** 
+
+```{r}
+
+bp.rer <- breakpoints(rer.ts1 ~ 1)
+plot(bp.rer)
+breakpoints(bp.rer)
+```
+```{r, include = F}
+summary(bp.rer)
+```
+
+
+**Part D:** 
+
+```{r}
+
+rer.fit <- auto.arima(rer.ts1,d=0, seasonal=FALSE)  
+
+checkresiduals(rer.fit)
+```
+```{r, include = F}
+summary(rer.fit)
+```
+
+**Part E:**
+
+```{r}
+
+fit1 <- Arima(rer.ts1, order=c(1,0,0))
+checkresiduals(fit1)
+
+
+```
+Ljung-Box test p-value = 0.1745
+
+**Part F:** 
+
+```{r}
+
+fac.rer <- breakfactor(bp.rer, breaks = 2, label = "seg")
+fm.rer <- lm(rer.ts1 ~ 1 + fac.rer)
+
+plot(rer.ts)
+lines(as.vector(time(rer.ts1)), fitted(fm.rer), col = 4)
+rer.ts1$Year <- time(rer.ts1) 
+
+dum1 <- ifelse(rer.ts1$Year>1945,1,0)
+
+dum2 <- ifelse(rer.ts1$Year>1970,1,0)
+
+rer.ts1 <- window(rer.ts, start=c(1870), end=c(2012))
+fit2 <- Arima(rer.ts1, order=c(1,0,0), xreg=cbind(dum1,dum2))
+```
+```{r, include = F}
+summary(fm.rer)
+summary(fit2)
+
+```
+
+**Part G:**
+```{r}
+
+fore1<-forecast(fit1,h=1)
+plot(fore1)
+dum1<-c(1)
+dum2<-c(1)
+fore2<-forecast(fit2,xreg=cbind(dum1,dum2),h=1)
+plot(fore2)
+```
+```{r, include = F}
+
+accuracy(fore1,rer.ts)
+accuracy(fore2,rer.ts)
+
+```
+
+**Part H:**
+
+```{r}
+
+bp.rer2 <- breakpoints(rer.ts ~ 1)
+fac.rer2 <- breakfactor(bp.rer2, breaks = 2, label = "seg")
+fm.rer2 <- lm(rer.ts ~ 1 + fac.rer2)
+rer.ts$Year <- time(rer.ts) 
+
+dum1 <- ifelse(rer.ts$Year>1945,1,0)
+
+dum2 <- ifelse(rer.ts$Year>1970,1,0)
+
+rer.ts <- ts(data = rer$V2, start=c(1870), end=c(2013))
+fit3 <- Arima(rer.ts, order=c(1,0,0), xreg=cbind(dum1,dum2))
+dum1<-c(1,1,1,1)
+dum2<-c(1,1,1,1)
+fore3<-forecast(fit2,xreg=cbind(dum1,dum2),h=4)
+plot(fore3)
+
+
+```
+
+### Question 2: 
+
+**Part A**
+```{r}
+
+unem <- read.csv("Unemployment_Rate.csv", header = F)
+unem.ts <- ts(unem$V2, start = c(1965,4), frequency = 4)
+
+tsdisplay(unem.ts)
+
+```
+
+
+
+**Part B**
+
+```{r}
+
+adf.test(unem.ts, alternative = "stationary")
+
+```
+#FTR null of non stationarity
+
+**Part C:**
+
+```{r}
+ur.fit1 <- auto.arima(unem.ts, seasonal=F)
+
+checkresiduals(ur.fit1)
+
+```
+
+**Part D:**
+
+```{r}
+ur.fit2 <- auto.arima(unem.ts, d=1, seasonal=F)
+checkresiduals(ur.fit2)
+
+```
+
+**Part E**
+
+```{r}
+ur.fit3 <- Arima(unem.ts, order = c(2,0,0))
+checkresiduals(ur.fit3)
+```
+
+
+
+**Part F**
+
+```{r}
+
+
+```
+
+#---------------------------------- Model 2 ____________________________________________________
+
+```{r}
+
+
+
+```
+
+#------------------------------------------------------------- MODEL 3 _________________________________________
+```{r}
+
+
+```
