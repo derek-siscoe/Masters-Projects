@@ -1,0 +1,176 @@
+7 Day Volatility Forecast 
+
+startdate = as.Date("2015-01-01")
+enddate = as.Date("2020-06-19")
+
+SAP <- na.omit(getSymbols("^GSPC", src="yahoo", env=NULL, from = startdate, to = enddate))
+
+SAP_ret <- dailyReturn(SAP)
+
+
+tsdisplay(SAP_ret)
+auto.arima(SAP_ret, trace = T, approximation = F, stepwise = F)
+
+SAP_fit <- Arima(SAP_ret, order = c(2,0,2))
+summary(SAP_fit)
+
+plot(SAP_fit$residuals)
+ArchTest((SAP_fit$residuals)^2)
+
+SAP_fore <- forecast(SAP_fit, h = 6)
+plot(SAP_fore)
+
+
+USfore1 <- data.frame(SAP_fore)[,1]
+plot(fore1)
+
+spec <- ugarchspec(variance.model = list(model = "eGARCH", garchOrder = c(1,1)),
+                   mean.model = list(armaOrder = c(2,2)), distribution.model = 'sstd')
+
+gfit <- ugarchfit(spec = spec, SAP_ret)
+show(gfit)
+
+fore2 <- ugarchforecast(gfit, n.ahead = 6)
+
+show(fore2)
+plot(fore2)
+1
+3
+0
+
+egvar <- gfit@fit$var
+egres2 <- gfit@fit$residuals^2
+
+plot(egres2, type = 'l')
+lines(egvar, col = 'green')
+
+Sigma <- fore2@forecast$sigmaFor
+
+gvar_t <- c(tail(egvar,20), rep(NA,6))
+gres2_t <- c(tail(egres2,20), rep(NA,6))
+gsigfor <- c(rep(NA,20),(Sigma)^2) 
+
+plot(gres2_t, type = 'l')
+lines(gvar_t, col = 'green')
+lines(gsigfor, col = 'red')
+
+#--------------------------------------GJR------------------------------------------------
+
+spec2 <- ugarchspec(variance.model = list(model = "gjrGARCH", garchOrder = c(1,1)),
+                   mean.model = list(armaOrder = c(2,2)), distribution.model = 'norm')
+
+gfit2 <- ugarchfit(spec = spec2, SAP_ret)
+show(gfit2)
+
+fore3 <- ugarchforecast(gfit2, n.ahead = 6)
+
+show(fore3)
+plot(fore3)
+1
+3
+0
+
+egvar_g <- gfit2@fit$var
+egres2_g <- gfit2@fit$residuals^2
+
+plot(egres2_g, type = 'l')
+lines(egvar_g, col = 'green')
+
+Sigma2 <- fore3@forecast$sigmaFor
+
+gvar_t2 <- c(tail(egvar_g,20), rep(NA,6))
+gres2_t2 <- c(tail(egres2_g,20), rep(NA,6))
+gsigfor2 <- c(rep(NA,20),(Sigma2)^2) 
+
+plot(gres2_t2, type = 'l')
+lines(gvar_t2, col = 'green')
+lines(gsigfor2, col = 'red')
+
+Sigmas <- cbind(Sigma, Sigma2)
+
+
+
+#------------------------------------------JAPAN---------------------------------------------
+
+JAP <- na.omit(getSymbols("^N225", src="yahoo", env=NULL, from = startdate, to = enddate))
+
+JAP_ret <- dailyReturn(JAP)
+
+
+tsdisplay(JAP_ret)
+
+auto.arima(JAP_ret, trace = T, approximation = F, stepwise = F)
+
+JAP_fit <- Arima(JAP_ret, order = c(0,0,0))
+summary(JAP_fit)
+
+ArchTest((JAP_fit$residuals)^2)
+
+JAP_fore <- forecast(JAP_fit, h = 6)
+plot(JAP_fore)
+
+JAPfore1 <- data.frame(JAP_fore)
+
+spec <- ugarchspec(variance.model = list(model = "eGARCH", garchOrder = c(1,1)),
+                   mean.model = list(armaOrder = c(0,0)),distribution.model = 'sstd')
+
+gfit <- ugarchfit(spec = spec, JAP_ret)
+show(gfit)
+
+fore2 <- ugarchforecast(gfit, n.ahead = 6)
+show(fore2)
+plot(fore2)
+1
+3
+0
+
+egvar <- gfit@fit$var
+egres2 <- gfit@fit$residuals^2
+
+plot(egres2, type = 'l')
+lines(egvar, col = 'green')
+
+Sigma <- fore2@forecast$sigmaFor
+
+gvar_t <- c(tail(egvar,20), rep(NA,6))
+gres2_t <- c(tail(egres2,20), rep(NA,6))
+gsigfor <- c(rep(NA,20),(Sigma)^2) 
+
+plot(gres2_t, type = 'l')
+lines(gvar_t, col = 'green')
+lines(gsigfor, col = 'red')
+
+
+#---------------------------------------------JAPAN gjr----------------------------
+
+spec2 <- ugarchspec(variance.model = list(model = "gjrGARCH", garchOrder = c(1,1)),
+                    mean.model = list(armaOrder = c(0,0)),distribution.model = 'sstd')
+
+gfit2 <- ugarchfit(spec = spec2, JAP_ret)
+show(gfit2)
+
+fore3 <- ugarchforecast(gfit2, n.ahead = 6)
+
+show(fore3)
+plot(fore3)
+1
+3
+0
+
+egvar_g <- gfit2@fit$var
+egres2_g <- gfit2@fit$residuals^2
+
+plot(egres2_g, type = 'l')
+lines(egvar_g, col = 'green')
+
+Sigma2 <- fore3@forecast$sigmaFor
+
+gvar_t2 <- c(tail(egvar_g,20), rep(NA,6))
+gres2_t2 <- c(tail(egres2_g,20), rep(NA,6))
+gsigfor2 <- c(rep(NA,20),(Sigma2)^2) 
+
+plot(gres2_t2, type = 'l')
+lines(gvar_t2, col = 'green')
+lines(gsigfor2, col = 'red')
+
+Sigmas <- cbind(Sigma, Sigma2)
